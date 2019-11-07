@@ -5,9 +5,9 @@ import pygame
 pygame.init()
 
 # Window settings
-TILE_SIZE = 64
-WIDTH = 15 * TILE_SIZE
-HEIGHT = 10 * TILE_SIZE
+GRID_SIZE = 64
+WIDTH = 15 * GRID_SIZE
+HEIGHT = 10 * GRID_SIZE
 TITLE = "Zelda"
 FPS = 60
 
@@ -43,6 +43,8 @@ P1_CTRLS = {'up': pygame.K_UP,
             'down': pygame.K_DOWN,
             'left': pygame.K_LEFT,
             'right': pygame.K_RIGHT }
+
+ROOM_TRANSITION_SPEED = GRID_SIZE / 4
 
 # Sprite classes
 class Character(pygame.sprite.Sprite):
@@ -174,8 +176,8 @@ class Map():
 
         for i, line in enumerate(data):
             for j, character in enumerate(line):
-                x = j * TILE_SIZE
-                y = i * TILE_SIZE
+                x = j * GRID_SIZE
+                y = i * GRID_SIZE
                 
                 if character == 'W':
                     self.walls.add( Wall(wall_img, x, y) )
@@ -201,7 +203,10 @@ all_sprites.add(player, walls, items)
 
 # Game loop
 running = True
+
 transitioning = False
+last_room_x = 0
+last_room_y = 0
 
 while running:
     # Input handling
@@ -216,19 +221,42 @@ while running:
     pressed = pygame.key.get_pressed()
     
     # Game logic
-    player.update(filtered_events, pressed)
-    offset_x = (player.sprite.rect.x // WIDTH) * WIDTH
-    offset_y = (player.sprite.rect.y // HEIGHT) * HEIGHT
+    if not transitioning:
+        player.update(filtered_events, pressed)
+
+    room_x = player.sprite.rect.x // WIDTH
+    room_y = player.sprite.rect.y // HEIGHT
+
+    if not transitioning and (last_room_x != room_x or last_room_y != room_y):
+        transitioning = True
+        step = 0
+        
+    if transitioning:
+        offset_x = last_room_x * WIDTH + step * (room_x - last_room_x)
+        offset_y = last_room_y * HEIGHT + step * (room_y - last_room_y)
+        step += ROOM_TRANSITION_SPEED
+
+        if room_x != last_room_x and step >= WIDTH:
+            last_room_x = room_x
+            last_room_y = room_y
+            transitioning = False
+        elif room_y != last_room_y and step >= HEIGHT:
+            last_room_x = room_x
+            last_room_y = room_y
+            transitioning = False
+    else:
+        offset_x = room_x * WIDTH
+        offset_y = room_y * HEIGHT
 
     # Drawing code
     window.fill(BLACK)
 
     for s in all_sprites:
-        room_x = s.rect.x - offset_x
-        room_y= s.rect.y - offset_y
+        x = s.rect.x - offset_x
+        y = s.rect.y - offset_y
         
-        if room_x < WIDTH and room_y < HEIGHT:
-            window.blit(s.image, [room_x, room_y])
+        if x < WIDTH and y < HEIGHT:
+            window.blit(s.image, [x, y])
         
     show_stats()
 
