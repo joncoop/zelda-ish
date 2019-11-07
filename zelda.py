@@ -136,8 +136,8 @@ class gem(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-        self.value = gem_VALUE
-        self.sound = gem_SOUND
+        self.value = GEM_VALUE
+        self.sound = GEM_SOUND
 
     def apply(self, character):
         character.score += self.value
