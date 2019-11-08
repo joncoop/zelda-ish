@@ -44,6 +44,7 @@ FONT_LG = pygame.font.Font("fonts/The Wild Breath of Zelda.otf", 112)
 MAP_FILE = 'maps/map1.txt'
 
 hero_img = load_image('images/characters/elf.png')
+big_elf = load_image('images/elf_originals/3_WALK_000.png', [128, 128])
 stone_img = load_image('images/stone/Stone (6).png', [GRID_SIZE, GRID_SIZE])
 grass_img = load_image('images/grass/Grass (5).png', [GRID_SIZE, GRID_SIZE])
 gem_img = load_image('images/items/gem.png')
@@ -266,11 +267,18 @@ def intro_screen():
     sub_title_rect = sub_title.get_rect()
     sub_title_rect.centerx = WIDTH / 2 + 40
     sub_title_rect.centery = 284
+    
+    start = FONT_SM.render("Press SPACE to begin...", 1, WHITE)
+    start_rect = start.get_rect()
+    start_rect.centerx = WIDTH / 2
+    start_rect.centery = 500
 
     window.blit(title, title_rect)
     window.blit(sub_title, sub_title_rect)
+    window.blit(start, start_rect)
 
-    window.blit(hero_img, [WIDTH / 2 - 20, 320])
+    window.blit(big_elf, [WIDTH / 2 - 64, 320])
+    pygame.draw.rect(window, DARK_GREEN, [64, 64, WIDTH - 128, HEIGHT - 64], 16)
 
 def show_stats(character):
     health = FONT_SM.render("Health: " + str(character.health), 1, WHITE)
@@ -367,11 +375,11 @@ while running:
     for man in old_men:
         if man.speaking:
             man.speak()
-            
-    show_stats(player.sprite)
+    
     if stage == START:
         intro_screen()
     else:
+        show_stats(player.sprite)
         window.blit(hud, [0, 0])
         window.blit(game, [0, GRID_SIZE])
     
