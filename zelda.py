@@ -15,22 +15,43 @@ FPS = 60
 WHITE = (255, 255, 255)
 LIGHT_GRAY = (225, 225, 225)
 BLACK = (0, 0, 0)
+DARK_GREEN = (0, 125, 0)
 
 # Make the window
-window = pygame.display.set_mode([WIDTH, HEIGHT])
+window = pygame.display.set_mode([WIDTH, HEIGHT + GRID_SIZE])
 pygame.display.set_caption(TITLE)
 clock = pygame.time.Clock()
 
+# Panels
+hud = pygame.Surface([WIDTH, GRID_SIZE])
+game = pygame.Surface([WIDTH, HEIGHT])
+
+# Utility classes
+def load_image(path, scale=None):
+    img = pygame.image.load(path)
+    img = img.convert_alpha()
+
+    if scale != None:
+        img = pygame.transform.scale(img, scale)
+
+    return img
+
 # Assets and Settings
+FONT_SM = pygame.font.Font(None, 32)
+FONT_MD = pygame.font.Font(None, 64)
+FONT_LG = pygame.font.Font("fonts/The Wild Breath of Zelda.otf", 112)
+
 MAP_FILE = 'maps/map1.txt'
 
-hero_img = pygame.image.load('images/character.png').convert_alpha()
-wall_img = pygame.image.load('images/block.png').convert_alpha()
-dirt_img = pygame.image.load('images/dirt.png').convert_alpha()
-gem_img = pygame.image.load('images/gem.png').convert_alpha()
-potion_img = pygame.image.load('images/potion.png').convert_alpha()
+hero_img = load_image('images/characters/elf.png')
+stone_img = load_image('images/stone/Stone (6).png', [GRID_SIZE, GRID_SIZE])
+grass_img = load_image('images/grass/Grass (5).png', [GRID_SIZE, GRID_SIZE])
+gem_img = load_image('images/items/gem.png')
+potion_img = load_image('images/items/potion4.png')
+old_man_img = load_image('images/characters/old_man.png')
+sandwich_img = load_image('images/items/sandwich.png')
 
-GEM_VALUE = 1
+BLUE_GEM_VALUE = 1
 GEM_SOUND = pygame.mixer.Sound('sounds/gem.ogg')
 
 HEALING_POTION_STRENGTH = 5
@@ -44,6 +65,10 @@ P1_CTRLS = {'up': pygame.K_UP,
             'right': pygame.K_RIGHT }
 
 ROOM_TRANSITION_SPEED = GRID_SIZE / 4
+
+START = 0
+PLAYING = 1
+END = 2
 
 # Sprite classes
 class Character(pygame.sprite.Sprite):
@@ -59,7 +84,7 @@ class Character(pygame.sprite.Sprite):
         self.speed = PLAYER_SPEED
         self.vx = 0
         self.vy = 0
-        self.score = 0
+        self.gems = 0
         self.health = 5
 
     def process_input(self, events, pressed):
@@ -112,11 +137,10 @@ class Character(pygame.sprite.Sprite):
 
         for item in hits:
             item.apply(self)
-
+            
     def update(self, events, pressed):
         self.process_input(events, pressed)
         self.move()
-        #self.check_edges()
         self.process_items()
 
 class Tile(pygame.sprite.Sprite):
@@ -137,11 +161,11 @@ class Gem(pygame.sprite.Sprite):
         self.rect.centerx = x
         self.rect.centery = y
 
-        self.value = GEM_VALUE
+        self.value = BLUE_GEM_VALUE
         self.sound = GEM_SOUND
 
     def apply(self, character):
-        character.score += self.value
+        character.gems += self.value
         self.sound.play()
         
 class HealingPotion(pygame.sprite.Sprite):
@@ -167,6 +191,7 @@ class Map():
         self.walls = pygame.sprite.Group()
         self.items = pygame.sprite.Group()
         self.ground = pygame.sprite.Group()
+        self.old_men = pygame.sprite.Group()
 
         self.load()
 
@@ -180,30 +205,94 @@ class Map():
                 y = i * GRID_SIZE + GRID_SIZE / 2
                 
                 if character == 'W':
-                    self.walls.add( Tile(wall_img, x, y) )
+                    self.walls.add( Tile(stone_img, x, y) )
                 elif character == 'G':
                     self.items.add( Gem(gem_img, x, y) )
                 elif character == 'H':
                     self.items.add( HealingPotion(potion_img, x, y) )
                 elif character == 'P':
                     self.player.add( Character(hero_img, x, y, P1_CTRLS) )
+                elif character == 'O':
+                    self.old_men.add( OldMan(old_man_img, x, y, "It's safe to go by yourself. Take this!") )
+                elif character == 'E':
+                    self.old_men.add( Enemy(enemy_img, x, y) )
 
-                self.ground.add( Tile(dirt_img, x, y) )
-                
-                    
+                self.ground.add( Tile(grass_img, x, y) )
+                                
+class OldMan(pygame.sprite.Sprite):
+    def __init__(self, image, x, y, message):
+        super().__init__()
+        
+        self.image = image
+        self.rect = image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y
+
+        self.message = message
+        self.speaking = False
+        
+    def speak(self):
+        x = 3 * GRID_SIZE
+        y = 3 * GRID_SIZE
+        w = WIDTH - 6 * GRID_SIZE
+        h = HEIGHT - 6 * GRID_SIZE
+        
+        pygame.draw.rect(game, BLACK, [x, y, w, h])
+        pygame.draw.rect(game, WHITE, [x, y, w, h], 2)
+        message = FONT_SM.render(self.message, 1, WHITE)
+        message_rect = message.get_rect()
+        message_rect.centerx = WIDTH / 2
+        message_rect.centery = HEIGHT / 2 - GRID_SIZE
+        game.blit(message, message_rect)
+
+        rect = sandwich_img.get_rect()
+        rect.centerx = WIDTH / 2
+        rect.centery = HEIGHT / 2
+        game.blit(sandwich_img, rect)
+
+    def update(self):
+        self.speaking = pygame.sprite.spritecollideany(self, player, False)
+    
 # Helper functions
-def show_stats():
-    pass
+def intro_screen():
+    window.fill(BLACK)
+    
+    title = FONT_LG.render(TITLE, 1, DARK_GREEN)
+    title_rect = title.get_rect()
+    title_rect.centerx = WIDTH / 2
+    title_rect.centery = 260
 
+    sub_title = FONT_SM.render("Link to the Legends of the Wild Past", 1, WHITE)
+    sub_title_rect = sub_title.get_rect()
+    sub_title_rect.centerx = WIDTH / 2 + 40
+    sub_title_rect.centery = 284
+
+    window.blit(title, title_rect)
+    window.blit(sub_title, sub_title_rect)
+
+    window.blit(hero_img, [WIDTH / 2 - 20, 320])
+
+def show_stats(character):
+    health = FONT_SM.render("Health: " + str(character.health), 1, WHITE)
+    gems = FONT_SM.render("Gems: " + str(character.gems), 1, WHITE)
+
+    hud.fill(BLACK)
+    hud.blit(health, [16, 16])
+    hud.blit(gems, [WIDTH - 108, 16])  
+
+    
 # Setup
 world = Map(MAP_FILE)
 player = world.player
 walls = world.walls
 items = world.items
 ground = world.ground
+old_men = world.old_men
 
 all_sprites = pygame.sprite.Group()
-all_sprites.add(player, walls, items)
+all_sprites.add(player, walls, items, old_men)
+
+stage = START
 
 # Game loop
 running = True
@@ -220,13 +309,19 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         else:
-            filtered_events.append(event)
+            if stage == START:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        stage = PLAYING
+            elif stage == PLAYING:
+                filtered_events.append(event)
             
     pressed = pygame.key.get_pressed()
     
     # Game logic
-    if not transitioning:
+    if stage == PLAYING and not transitioning:
         player.update(filtered_events, pressed)
+        old_men.update()
 
     room_x = player.sprite.rect.centerx // WIDTH
     room_y = player.sprite.rect.centery // HEIGHT
@@ -260,17 +355,26 @@ while running:
         y = s.rect.y - offset_y
         
         if x < WIDTH and y < HEIGHT:
-            window.blit(s.image, [x, y])
+            game.blit(s.image, [x, y])
         
     for s in all_sprites:
         x = s.rect.x - offset_x
         y = s.rect.y - offset_y
         
         if x < WIDTH and y < HEIGHT:
-            window.blit(s.image, [x, y])
-        
-    show_stats()
+            game.blit(s.image, [x, y])
 
+    for man in old_men:
+        if man.speaking:
+            man.speak()
+            
+    show_stats(player.sprite)
+    if stage == START:
+        intro_screen()
+    else:
+        window.blit(hud, [0, 0])
+        window.blit(game, [0, GRID_SIZE])
+    
     # Update display
     pygame.display.update()
     clock.tick(FPS)
