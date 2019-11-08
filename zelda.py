@@ -8,15 +8,13 @@ pygame.init()
 GRID_SIZE = 64
 WIDTH = 15 * GRID_SIZE
 HEIGHT = 10 * GRID_SIZE
-TITLE = "Zelda"
+TITLE = "Zelda-ish"
 FPS = 60
 
 # Colors
 WHITE = (255, 255, 255)
+LIGHT_GRAY = (225, 225, 225)
 BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
 
 # Make the window
 window = pygame.display.set_mode([WIDTH, HEIGHT])
@@ -26,8 +24,9 @@ clock = pygame.time.Clock()
 # Assets and Settings
 MAP_FILE = 'maps/map1.txt'
 
-parrot_img = pygame.image.load('images/parrot.png').convert_alpha()
+hero_img = pygame.image.load('images/character.png').convert_alpha()
 wall_img = pygame.image.load('images/block.png').convert_alpha()
+dirt_img = pygame.image.load('images/dirt.png').convert_alpha()
 gem_img = pygame.image.load('images/gem.png').convert_alpha()
 potion_img = pygame.image.load('images/potion.png').convert_alpha()
 
@@ -53,8 +52,8 @@ class Character(pygame.sprite.Sprite):
         
         self.image = image
         self.rect = image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.centerx = x
+        self.rect.centery = y
         self.controls = controls
 
         self.speed = PLAYER_SPEED
@@ -120,23 +119,23 @@ class Character(pygame.sprite.Sprite):
         #self.check_edges()
         self.process_items()
 
-class Wall(pygame.sprite.Sprite):
+class Tile(pygame.sprite.Sprite):
     def __init__(self, image, x, y):
         super().__init__()
         
         self.image = image
         self.rect = image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.centerx = x
+        self.rect.centery = y
         
-class gem(pygame.sprite.Sprite):
+class Gem(pygame.sprite.Sprite):
     def __init__(self, image, x, y):
         super().__init__()
         
         self.image = image
         self.rect = image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.centerx = x
+        self.rect.centery = y
 
         self.value = GEM_VALUE
         self.sound = GEM_SOUND
@@ -151,8 +150,8 @@ class HealingPotion(pygame.sprite.Sprite):
         
         self.image = image
         self.rect = image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.centerx = x
+        self.rect.centery = y
 
         self.strength = HEALING_POTION_STRENGTH
         self.sound = HEAL_SOUND
@@ -167,6 +166,7 @@ class Map():
         self.player = pygame.sprite.GroupSingle()
         self.walls = pygame.sprite.Group()
         self.items = pygame.sprite.Group()
+        self.ground = pygame.sprite.Group()
 
         self.load()
 
@@ -176,17 +176,20 @@ class Map():
 
         for i, line in enumerate(data):
             for j, character in enumerate(line):
-                x = j * GRID_SIZE
-                y = i * GRID_SIZE
+                x = j * GRID_SIZE + GRID_SIZE / 2
+                y = i * GRID_SIZE + GRID_SIZE / 2
                 
                 if character == 'W':
-                    self.walls.add( Wall(wall_img, x, y) )
-                elif character == 'C':
-                    self.items.add( gem(gem_img, x, y) )
+                    self.walls.add( Tile(wall_img, x, y) )
+                elif character == 'G':
+                    self.items.add( Gem(gem_img, x, y) )
                 elif character == 'H':
                     self.items.add( HealingPotion(potion_img, x, y) )
-                elif character == '1':
-                    self.player.add( Character(parrot_img, x, y, P1_CTRLS) )
+                elif character == 'P':
+                    self.player.add( Character(hero_img, x, y, P1_CTRLS) )
+
+                self.ground.add( Tile(dirt_img, x, y) )
+                
                     
 # Helper functions
 def show_stats():
@@ -197,6 +200,7 @@ world = Map(MAP_FILE)
 player = world.player
 walls = world.walls
 items = world.items
+ground = world.ground
 
 all_sprites = pygame.sprite.Group()
 all_sprites.add(player, walls, items)
@@ -224,8 +228,8 @@ while running:
     if not transitioning:
         player.update(filtered_events, pressed)
 
-    room_x = player.sprite.rect.x // WIDTH
-    room_y = player.sprite.rect.y // HEIGHT
+    room_x = player.sprite.rect.centerx // WIDTH
+    room_y = player.sprite.rect.centery // HEIGHT
 
     if not transitioning and (last_room_x != room_x or last_room_y != room_y):
         transitioning = True
@@ -251,6 +255,13 @@ while running:
     # Drawing code
     window.fill(BLACK)
 
+    for s in ground:
+        x = s.rect.x - offset_x
+        y = s.rect.y - offset_y
+        
+        if x < WIDTH and y < HEIGHT:
+            window.blit(s.image, [x, y])
+        
     for s in all_sprites:
         x = s.rect.x - offset_x
         y = s.rect.y - offset_y

@@ -1,20 +1,20 @@
 WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 W             WW             W
-W   WWWWWWW   WW     C       W
+W   WWWWWWW   WW     G       W
 W   W     W   WW             W
 W   WW   WW                  W
 W                  WWWWW     W
 W             WW    W        W
-W      1      WW    W     H  W
+W      P      WW    W     H  W
 W             WW    W        W
 WWWWWWWWWWWWWWWWWWWWW   WWWWWW
 WWWWWWWWWWWWWWWWWWWWW   WWWWWW
 W             WW             W
-W         W   WW     C       W
+W         W   WW     G       W
 W         W   WW             W
 W   WWWWWWW                  W
 W                 WWW   WWWWWW
 W             WW    W        W
-W             WW    W     H  W
+W      G      WW    W     H  W
 W             WW    W        W
 WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
