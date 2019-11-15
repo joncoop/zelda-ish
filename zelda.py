@@ -263,9 +263,9 @@ def intro_screen():
     title_rect.centerx = WIDTH / 2
     title_rect.centery = 260
 
-    sub_title = FONT_SM.render("Link to the Legends of the Wild Past", 1, WHITE)
+    sub_title = FONT_SM.render("Link to the Legends of the Time of the Wild Past", 1, WHITE)
     sub_title_rect = sub_title.get_rect()
-    sub_title_rect.centerx = WIDTH / 2 + 40
+    sub_title_rect.centerx = WIDTH / 2 + 100
     sub_title_rect.centery = 284
     
     start = FONT_SM.render("Press SPACE to begin...", 1, WHITE)
@@ -369,7 +369,7 @@ while running:
         x = s.rect.x - offset_x
         y = s.rect.y - offset_y
         
-        if x < WIDTH and y < HEIGHT:
+        if -GRID_SIZE < x < WIDTH and -GRID_SIZE < y < HEIGHT:
             game.blit(s.image, [x, y])
 
     for man in old_men:
