@@ -33,7 +33,8 @@ PLAYER_SPEED = 4
 CONTROLS = {'up': pygame.K_w,
             'down': pygame.K_s,
             'left': pygame.K_a,
-            'right': pygame.K_d }
+            'right': pygame.K_d,
+            'sword': pygame.K_SPACE}
 
 GEM_VALUE = 1
 HEALING_POTION_STRENGTH = 1
@@ -120,6 +121,8 @@ POTION_IMG = load_image('images/items/potion4.png')
 GEM_ICON = load_image('images/items/gem.png', [32, 32])
 HEART_ICON = load_image('images/items/heart.png', [32, 32])
 
+SWORD_IMG = load_image('images/items/woodSword.png', [32, 32])
+
 
 # Characters
 class Player(pygame.sprite.Sprite):
@@ -137,7 +140,8 @@ class Player(pygame.sprite.Sprite):
         self.gems = 0
         self.health = PLAYER_HEALTH
         self.max_health = PLAYER_MAX_HEALTH
-
+        self.weapon = None
+        
     def go_up(self):
         self.vx = 0
         self.vy = -1 * self.speed
@@ -179,6 +183,10 @@ class Player(pygame.sprite.Sprite):
             elif self.rect.centery > obstacle.rect.centery:
                 self.rect.top = obstacle.rect.bottom
 
+    def use_sword(self):
+        if self.weapon != None:
+            print('Woosh')
+    
     def check_items(self, items):
         hits = pygame.sprite.spritecollide(self, items, True)
 
@@ -211,6 +219,7 @@ class Tile(pygame.sprite.Sprite):
         self.rect = image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
+
 
 # Items
 class Gem(pygame.sprite.Sprite):
@@ -245,6 +254,20 @@ class HealingPotion(pygame.sprite.Sprite):
         self.sound.play()
 
 
+# Weapons
+class Sword(pygame.sprite.Sprite):
+    def __init__(self, image, x, y):
+        super().__init__()
+
+        self.image = image
+        self.rect = image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y
+
+    def apply(self, character):
+        character.weapon = self
+
+    
 # Map
 class Map():
     def __init__(self, file):
@@ -273,6 +296,8 @@ class Map():
                     self.items.add(Gem(GEM_IMG, x, y))
                 elif symbol == 'H':
                     self.items.add(HealingPotion(POTION_IMG, x, y))
+                elif symbol == 'S':
+                    self.items.add(Sword(SWORD_IMG, x, y))
 
                 self.ground.add(Tile(GRASS_IMG, x, y))
 
@@ -345,8 +370,10 @@ class PlayScene(Scene):
     def process_input(self, events, pressed):
         for event in events:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_TAB:
                     self.next_scene = EndScene()
+                elif event.key == pygame.K_SPACE:
+                    self.player.use_sword()
 
         if pressed[CONTROLS['up']]:
             self.player.go_up()
