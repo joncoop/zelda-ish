@@ -96,7 +96,7 @@ def draw_text(surface, text, font, color, loc, anchor='topleft', antialias=True)
     elif anchor == 'midtop'      : rect.midtop = loc
     elif anchor == 'midleft'     : rect.midleft = loc
     elif anchor == 'midbottom'   : rect.midbottom = loc
-    elif anchor == 'midright'    : rect.midleft = loc
+    elif anchor == 'midright'    : rect.midright = loc
     elif anchor == 'center'      : rect.center = loc
     
     surface.blit(text, rect)
@@ -137,6 +137,8 @@ class Player(pygame.sprite.Sprite):
         self.speed = PLAYER_SPEED
         self.vx = 0
         self.vy = 0
+        self.direction = 0
+        
         self.gems = 0
         self.health = PLAYER_HEALTH
         self.max_health = PLAYER_MAX_HEALTH
@@ -145,19 +147,23 @@ class Player(pygame.sprite.Sprite):
     def go_up(self):
         self.vx = 0
         self.vy = -1 * self.speed
-        
-    def go_down(self):
-        self.vx = 0
-        self.vy = self.speed
-        
-    def go_left(self):
-        self.vx = -1 * self.speed
-        self.vy = 0
+        self.direction = 0
         
     def go_right(self):
         self.vx = self.speed
         self.vy = 0
+        self.direction = 1
 
+    def go_down(self):
+        self.vx = 0
+        self.vy = self.speed
+        self.direction = 2
+        
+    def go_left(self):
+        self.vx = -1 * self.speed
+        self.vy = 0
+        self.direction = 3
+        
     def stop(self):
         self.vx = 0
         self.vy = 0
@@ -183,9 +189,11 @@ class Player(pygame.sprite.Sprite):
             elif self.rect.centery > obstacle.rect.centery:
                 self.rect.top = obstacle.rect.bottom
 
-    def use_sword(self):
+    def use_sword(self, weapon_sprite_group):
         if self.weapon != None:
             print('Woosh')
+            weapon_sprite_group.add(self.weapon)
+            self.weapon.swing()
     
     def check_items(self, items):
         hits = pygame.sprite.spritecollide(self, items, True)
@@ -263,11 +271,36 @@ class Sword(pygame.sprite.Sprite):
         self.rect = image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
-
+        self.owner = None
+        self.swing_timer = 0
+        
     def apply(self, character):
+        self.owner = character
         character.weapon = self
 
-    
+    def swing(self):
+        self.swing_timer = 30
+        
+    def update(self):
+        if self.swing_timer > 0:
+            self.swing_timer -= 1
+            direction = self.owner.direction
+
+            if direction == 0:
+                self.rect.centerx = self.owner.rect.centerx
+                self.rect.bottom = self.owner.rect.top
+            elif direction == 1:
+                self.rect.left = self.owner.rect.right
+                self.rect.centery = self.owner.rect.centery
+            elif direction == 2:
+                self.rect.centerx = self.owner.rect.centerx
+                self.rect.top = self.owner.rect.bottom
+            elif direction == 3:
+                self.rect.right = self.owner.rect.left
+                self.rect.centery = self.owner.rect.centery
+        else:
+            self.kill()
+        
 # Map
 class Map():
     def __init__(self, file):
@@ -359,6 +392,8 @@ class PlayScene(Scene):
         self.items = self.world.items
         self.ground = self.world.ground
 
+        self.weapons = pygame.sprite.Group()
+
         self.all_sprites = pygame.sprite.Group()
         self.all_sprites.add(self.player, self.walls, self.items)
 
@@ -373,7 +408,7 @@ class PlayScene(Scene):
                 if event.key == pygame.K_TAB:
                     self.next_scene = EndScene()
                 elif event.key == pygame.K_SPACE:
-                    self.player.use_sword()
+                    self.player.use_sword(self.weapons)
 
         if pressed[CONTROLS['up']]:
             self.player.go_up()
@@ -422,7 +457,11 @@ class PlayScene(Scene):
             
     def update(self):
         self.calculate_offset()
+
+        self.all_sprites.add(self.weapons)
+        
         self.player.update(self.world)
+        self.weapons.update()
 
     def render(self):
         screen.fill(BLACK)
@@ -453,8 +492,10 @@ class PlayScene(Scene):
             x = s.rect.x - self.offset_x
             y = s.rect.y - self.offset_y
 
-            if x < WIDTH and y < HEIGHT:
+            if -GRID_SIZE < x < WIDTH and -GRID_SIZE < y < HEIGHT:
                 self.main.blit(s.image, [x, y])
+
+        self.weapons.draw(self.main)
 
         screen.blit(self.hud, [0, 0])
         screen.blit(self.main, [0, HUD_HEIGHT])
@@ -479,7 +520,6 @@ class EndScene(Scene):
     def render(self):
         screen.fill(BLACK)
         draw_text(screen, 'End Scene', FONT_LG, WHITE, [WIDTH // 2, HEIGHT // 2], 'center')
-
 
     def terminate(self):
         self.next_scene = None
