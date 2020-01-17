@@ -114,6 +114,7 @@ HEAL_SND = load_sound('sounds/heal.ogg')
 
 HERO_IMG = load_image('images/characters/elf.png')
 BIG_ELF_IMG = load_image('images/elf_originals/3_WALK_000.png', [128, 128])
+
 STONE_IMG = load_image('images/stone/Stone (6).png', [GRID_SIZE, GRID_SIZE])
 GRASS_IMG = load_image('images/grass/Grass (5).png', [GRID_SIZE, GRID_SIZE])
 GEM_IMG = load_image('images/items/gem.png')
@@ -122,6 +123,8 @@ GEM_ICON = load_image('images/items/gem.png', [32, 32])
 HEART_ICON = load_image('images/items/heart.png', [32, 32])
 
 SWORD_IMG = load_image('images/items/woodSword.png', [32, 32])
+
+MONSTER_IMG = load_image('images/characters/spiky_monster.png', [64, 64])
 
 
 # Characters
@@ -205,7 +208,7 @@ class Player(pygame.sprite.Sprite):
         self.move(world.walls)
         self.check_items(world.items)
 
-class Mob(pygame.sprite.Sprite):
+class Monster(pygame.sprite.Sprite):
     def __init__(self, image, x, y):
         super().__init__()
 
@@ -213,9 +216,16 @@ class Mob(pygame.sprite.Sprite):
         self.rect = image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
+        self.health = 3
+        
+    def update(self, weapons):
+        hits = pygame.sprite.spritecollide(self, weapons, False)
 
-    def update(self):
-        pass
+        for weapon in hits:
+            self.health -= weapon.damage
+            
+        if self.health <= 0:
+            self.kill()
 
 
 # Tiles
@@ -273,6 +283,7 @@ class Sword(pygame.sprite.Sprite):
         self.rect.centery = y
         self.owner = None
         self.swing_timer = 0
+        self.damage = 1
         
     def apply(self, character):
         self.owner = character
@@ -309,7 +320,8 @@ class Map():
         self.walls = pygame.sprite.Group()
         self.items = pygame.sprite.Group()
         self.ground = pygame.sprite.Group()
-
+        self.mobs = pygame.sprite.Group()
+        
         self.load()
 
     def load(self):
@@ -331,6 +343,8 @@ class Map():
                     self.items.add(HealingPotion(POTION_IMG, x, y))
                 elif symbol == 'S':
                     self.items.add(Sword(SWORD_IMG, x, y))
+                elif symbol == 'M':
+                    self.mobs.add(Monster(MONSTER_IMG, x, y))
 
                 self.ground.add(Tile(GRASS_IMG, x, y))
 
@@ -391,11 +405,12 @@ class PlayScene(Scene):
         self.walls = self.world.walls
         self.items = self.world.items
         self.ground = self.world.ground
+        self.mobs = self.world.mobs
 
         self.weapons = pygame.sprite.Group()
 
         self.all_sprites = pygame.sprite.Group()
-        self.all_sprites.add(self.player, self.walls, self.items)
+        self.all_sprites.add(self.player, self.walls, self.items, self.mobs)
 
         self.set_start_offset()
 
@@ -462,6 +477,7 @@ class PlayScene(Scene):
         
         self.player.update(self.world)
         self.weapons.update()
+        self.mobs.update(self.weapons)
 
     def render(self):
         screen.fill(BLACK)
