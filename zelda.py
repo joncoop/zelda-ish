@@ -1,4 +1,5 @@
 # Imports
+import math
 import pygame
 
 # Initialize game engine
@@ -34,7 +35,8 @@ CONTROLS = {'up': pygame.K_w,
             'down': pygame.K_s,
             'left': pygame.K_a,
             'right': pygame.K_d,
-            'sword': pygame.K_SPACE}
+            'sword': pygame.K_g,
+            'boobmerang': pygame.K_h}
 
 GEM_VALUE = 1
 HEALING_POTION_STRENGTH = 1
@@ -123,6 +125,7 @@ GEM_ICON = load_image('images/items/gem.png', [32, 32])
 HEART_ICON = load_image('images/items/heart.png', [32, 32])
 
 SWORD_IMG = load_image('images/items/woodSword.png', [32, 32])
+BOOMERANG_IMG = load_image('images/items/boomerang.png', [32, 32])
 
 MONSTER_IMG = load_image('images/characters/spiky_monster.png', [64, 64])
 
@@ -146,6 +149,7 @@ class Player(pygame.sprite.Sprite):
         self.health = PLAYER_HEALTH
         self.max_health = PLAYER_MAX_HEALTH
         self.weapon = None
+        self.weapon2 = None
         
     def go_up(self):
         self.vx = 0
@@ -197,7 +201,13 @@ class Player(pygame.sprite.Sprite):
             print('Woosh')
             weapon_sprite_group.add(self.weapon)
             self.weapon.swing()
-    
+
+    def throw_boomerang(self, weapon_sprite_group):
+        if self.weapon2 != None:
+            print('Fwoooo')
+            weapon_sprite_group.add(self.weapon2)
+            self.weapon2.throw()
+
     def check_items(self, items):
         hits = pygame.sprite.spritecollide(self, items, True)
 
@@ -287,7 +297,7 @@ class Sword(pygame.sprite.Sprite):
         
     def apply(self, character):
         self.owner = character
-        character.weapon = self
+        character.weapon2 = self
 
     def swing(self):
         self.swing_timer = 30
@@ -311,6 +321,69 @@ class Sword(pygame.sprite.Sprite):
                 self.rect.centery = self.owner.rect.centery
         else:
             self.kill()
+        
+class Boomerang(pygame.sprite.Sprite):
+    def __init__(self, image, x, y):
+        super().__init__()
+
+        self.image = image
+        self.rect = image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y
+        self.owner = None
+        self.throw_timer = 0
+        self.damage = 1
+        
+    def apply(self, character):
+        self.owner = character
+        character.weapon2 = self
+
+    def throw(self):
+        self.throw_timer = 120
+        self.direction = self.owner.direction
+        
+        if self.direction == 0:
+            self.rect.centerx = self.owner.rect.centerx
+            self.rect.bottom = self.owner.rect.top
+        elif self.direction == 1:
+            self.rect.left = self.owner.rect.right
+            self.rect.centery = self.owner.rect.centery
+        elif self.direction == 2:
+            self.rect.centerx = self.owner.rect.centerx
+            self.rect.top = self.owner.rect.bottom
+        elif self.direction == 3:
+            self.rect.right = self.owner.rect.left
+            self.rect.centery = self.owner.rect.centery
+
+    def move(self, vx, vy):
+        self.rect.x += vx
+        self.rect.y += vy
+        
+    def update(self):
+        if self.throw_timer > 0:
+            self.throw_timer -= 1
+
+            if self.direction == 0:
+                vx, vy = [0, -5]
+            elif self.direction == 1:
+                vx, vy = [5, 0]
+            elif self.direction == 2:
+                vx, vy = [0, 5]
+            elif self.direction == 3:
+                vx, vy = [-5, 0]
+
+            self.move(vx, vy)
+        else:
+            dx = (self.owner.rect.centerx - self.rect.centerx)
+            dy = (self.owner.rect.centery - self.rect.centery)
+
+            vx = 5 * dx / math.sqrt(dx ** 2 + dy ** 2)
+            vy = 5 * dy / math.sqrt(dx ** 2 + dy ** 2)
+
+            self.move(vx, vy)
+            
+            if self.rect.colliderect(self.owner.rect):
+                self.kill()
         
 # Map
 class Map():
@@ -343,6 +416,8 @@ class Map():
                     self.items.add(HealingPotion(POTION_IMG, x, y))
                 elif symbol == 'S':
                     self.items.add(Sword(SWORD_IMG, x, y))
+                elif symbol == 'B':
+                    self.items.add(Boomerang(BOOMERANG_IMG, x, y))
                 elif symbol == 'M':
                     self.mobs.add(Monster(MONSTER_IMG, x, y))
 
@@ -422,8 +497,10 @@ class PlayScene(Scene):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB:
                     self.next_scene = EndScene()
-                elif event.key == pygame.K_SPACE:
+                elif event.key == pygame.K_g:
                     self.player.use_sword(self.weapons)
+                elif event.key == pygame.K_h:
+                    self.player.throw_boomerang(self.weapons)
 
         if pressed[CONTROLS['up']]:
             self.player.go_up()
